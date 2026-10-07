@@ -1,0 +1,36 @@
+{
+  "_doc": "Dos decisiones por prompt. interpreters: que modelo reescribe el prompt segun su complejidad (los simples no se reescriben). rules: que modelo responde y con que effort (low|medium|high|xhigh|max; sin effort = el que pidio el cliente). Reglas en orden: gana la primera que coincide. Sin coincidencia = el modelo que pidio el cliente. Condiciones: complexity, deliverable, context_kinds, min_chars, max_chars, from_models. Forzar a mano: escribi #model:opus (o sonnet, haiku, o un id completo) en tu mensaje.",
+  "aliases": {
+    "haiku": "claude-haiku-4-5-20251001",
+    "sonnet": "claude-sonnet-5-5",
+    "opus": "claude-opus-5-5"
+  },
+  "interpreters": {
+    "moderate": "haiku",
+    "complex": "sonnet"
+  },
+  "rules": [
+    {
+      "name": "consultas-simples",
+      "when": {"complexity": ["simple"]},
+      "model": "haiku"
+    },
+    {
+      "name": "codigo-y-acciones-moderadas",
+      "when": {"complexity": ["moderate"], "deliverable": ["code", "action"]},
+      "model": "sonnet",
+      "effort": "medium"
+    },
+    {
+      "name": "analisis-moderado",
+      "when": {"complexity": ["moderate"], "deliverable": ["analysis", "answer", "text"]},
+      "model": "sonnet",
+      "effort": "medium"
+    },
+    {
+      "name": "complejo",
+      "when": {"complexity": ["complex"]},
+      "model": "opus"
+    }
+  ]
+}
