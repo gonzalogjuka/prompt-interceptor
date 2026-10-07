@@ -73,6 +73,8 @@ configurable endpoint.
 
 ## Install on another machine
 
+**Step by step, copy-paste, Windows and Linux: [INSTALAR.md](INSTALAR.md)** (Spanish). Summary:
+
 Everything that defines the interceptor is in the repo (code, `config.env`, `routes.json`,
 `perfil.md`). Per machine there is only `.env` (created empty, empty is fine), logs and metrics.
 
