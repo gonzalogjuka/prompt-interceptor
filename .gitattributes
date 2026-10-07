@@ -1,0 +1,4 @@
+# scripts de bash con LF siempre (con CRLF fallan en Linux), los de Windows con CRLF
+*.sh text eol=lf
+*.ps1 text eol=crlf
+*.cmd text eol=crlf

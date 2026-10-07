@@ -48,6 +48,7 @@ Double-click, in order:
 | `3-Ver-reporte.cmd` | metrics summary (needs `METRICS_ENABLED=true`) |
 | `4-Ver-log.cmd` | live log of the background instance |
 | `5-Benchmark.cmd` | A/B benchmark (needs `ANTHROPIC_API_KEY` in `.env`) |
+| `test.ps1` | tests against a simulated API (no key, no network) |
 
 Run it in the background at every login instead of keeping a window open:
 
@@ -58,16 +59,45 @@ Run it in the background at every login instead of keeping a window open:
 .\autostart.ps1 -Uninstall
 ```
 
-Other platforms:
+Linux / Mac (same behavior: loads `config.env` then `.env`):
 
 ```bash
-pip install -r requirements.txt
-python -m interceptor.app                       # listens on 127.0.0.1:8787
-ANTHROPIC_BASE_URL=http://127.0.0.1:8787 claude # or base_url= in the SDK
+./start.sh                       # foreground, log on screen
+./autostart.sh --install         # systemd user service: starts at boot, restarts on failure
+./autostart.sh --status | --restart | --stop | --uninstall
+./claude-interceptor.sh          # Claude Code through the interceptor (that terminal only)
 ```
 
 The hosted claude.ai chat cannot be intercepted: it does not route through a
 configurable endpoint.
+
+## Install on another machine
+
+Everything that defines the interceptor is in the repo (code, `config.env`, `routes.json`,
+`perfil.md`). Per machine there is only `.env` (created empty, empty is fine), logs and metrics.
+
+1. **Prerequisites:** git, Python 3.12+, Claude Code logged in, and access to the private repo
+   (`gh auth login` with the repo owner's account, then `gh auth setup-git` so `git pull` works
+   unattended).
+2. **Clone and start in the background:**
+   ```bash
+   gh repo clone gonzalogjuka/prompt-interceptor && cd prompt-interceptor
+   ./autostart.sh --install          # Windows: .\autostart.ps1 -Install
+   ```
+3. **Point the client at it:** `./claude-interceptor.sh` for one terminal; for every session
+   `export ANTHROPIC_BASE_URL=http://127.0.0.1:8787` in `~/.bashrc` (Windows: `setx`); for the
+   VS Code extension, `"claudeCode.environmentVariables": [{"name": "ANTHROPIC_BASE_URL",
+   "value": "http://127.0.0.1:8787"}]` (with Remote-SSH, in the remote settings). Only do it
+   globally with the background service installed: if nothing listens on 8787 the client fails.
+4. **Check:** send a prompt and look for a `[context] perfil ...` line in `interceptor.log`.
+
+**Updates:** with `AUTO_UPDATE=true` (default) each background start runs `git pull --ff-only`, so
+the daily-improvement PRs you merge reach every machine on its next start (`./autostart.sh
+--restart` to take them now). It never blocks: without network or credentials it logs an
+`[update]` warning and starts with what it has.
+
+Run the interceptor on the machine where Claude Code runs: with VS Code Remote-SSH or an SSH
+terminal into a VM, that is the VM, not the PC you type on.
 
 ## Controls inside your messages
 
