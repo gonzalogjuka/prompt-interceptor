@@ -42,7 +42,8 @@ da `status ok`, una línea `[update] repo al dia (...)` y una `modo=... perfil=.
 .\.venv\Scripts\python.exe tools\vscode_setting.py          # VS Code: despues Ctrl+Shift+P > Developer: Reload Window
 setx ANTHROPIC_BASE_URL http://127.0.0.1:8787               # toda terminal nueva (solo con el paso 3 hecho)
 ```
-O sin tocar nada: doble clic en `2-Claude-con-interceptor.cmd` (solo esa terminal).
+O sin tocar nada: doble clic en `2-Claude-con-interceptor.cmd` (solo esa terminal). Retoma la ultima
+conversacion de la carpeta, en bypass; si no hay ninguna, abre una nueva.
 
 **5. Prueba final:**
 ```powershell
