@@ -6,3 +6,5 @@ metrics.jsonl
 data/
 interceptor.log*
 bench/results/
+.pytest_tmp/
+.daily-pr.md

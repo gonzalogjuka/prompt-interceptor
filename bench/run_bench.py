@@ -99,7 +99,7 @@ async def run(args, transport: httpx.AsyncBaseTransport | None = None) -> list[d
     metrics_path.unlink(missing_ok=True)
 
     cfg = Config(upstream_url=args.upstream, api_key=key or None, require_tools=False, min_chars=args.min_chars,
-                 routing_mode=args.routing, routes_file=str(ROOT / "routes.json"),
+                 routing_mode=args.routing, routes_file=args.routes, profile_file=args.profile,
                  metrics_enabled=True, metrics_path=str(metrics_path), audit=False)
     app = create_app(cfg, transport=transport)
     headers = {"x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json"}
@@ -172,6 +172,8 @@ def main() -> None:
     p.add_argument("--min-chars", type=int, default=400,
                    help="umbral del filtro (MIN_CHARS); probá 200 para incluir pedidos cortos y desordenados")
     p.add_argument("--upstream", default="https://api.anthropic.com")
+    p.add_argument("--routes", default=str(ROOT / "routes.json"), help="interpretes y reglas a medir")
+    p.add_argument("--profile", default=str(ROOT / "perfil.md"), help="perfil que ve el interprete")
     p.add_argument("--out", default=str(Path(__file__).with_name("results")))
     asyncio.run(run(p.parse_args()))
 
