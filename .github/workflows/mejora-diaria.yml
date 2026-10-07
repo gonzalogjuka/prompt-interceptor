@@ -1,6 +1,10 @@
 # Una mejora por día: Claude Code (con el token de la suscripción de Gonzalo) revisa tests y código,
 # hace un cambio chico y verificado, y el workflow abre un PR. Claude no tiene permisos de git/push:
 # solo edita archivos y corre los tests; el commit y el PR los hace este workflow.
+#
+# PRs sin revisar: con MAX_PRS_ABIERTOS o más abiertos, ese día no trabaja (no gasta cuota) y retoma
+# solo cuando mergeás o cerrás alguno. A los que pasan RECORDAR_DIAS sin respuesta les deja un
+# comentario de recordatorio, uno por semana como máximo.
 name: Mejora diaria (Claude)
 
 on:
@@ -12,14 +16,62 @@ concurrency:
   group: mejora-diaria
   cancel-in-progress: false
 
-permissions:
-  contents: write
-  pull-requests: write
+env:
+  MAX_PRS_ABIERTOS: 2
+  RECORDAR_DIAS: 7
+  PREFIJO_RAMA: claude/mejora-
+  TZ: America/Argentina/Buenos_Aires
 
 jobs:
+  pendientes:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      issues: write
+    outputs:
+      trabajar: ${{ steps.contar.outputs.trabajar }}
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Recordar PRs sin revisar
+        run: |
+          marca="<!-- recordatorio-mejora-diaria -->"
+          ahora=$(date +%s)
+          gh pr list --state open --limit 100 --json number,headRefName,createdAt \
+            --jq ".[] | select(.headRefName | startswith(\"$PREFIJO_RAMA\")) | \"\(.number) \(.createdAt)\"" |
+          while read -r n creado; do
+            dias=$(( (ahora - $(date -d "$creado" +%s)) / 86400 ))
+            [ "$dias" -ge "$RECORDAR_DIAS" ] || continue
+            ultimo=$(gh api "repos/$GH_REPO/issues/$n/comments" --paginate \
+              --jq "[.[] | select(.body | contains(\"$marca\")) | .created_at] | last // empty")
+            if [ -n "$ultimo" ] && [ $(( (ahora - $(date -d "$ultimo" +%s)) / 86400 )) -lt 7 ]; then continue; fi
+            gh pr comment "$n" --body "$marca
+          @${{ github.repository_owner }} este PR lleva $dias días sin revisar. Mientras haya $MAX_PRS_ABIERTOS o más PRs de la mejora diaria abiertos, la mejora diaria queda en pausa. Mergealo o cerralo (cerrar sin merge = idea rechazada, no se vuelve a proponer)."
+            echo "Recordatorio en el PR #$n ($dias días)"
+          done
+
+      - name: Contar PRs abiertos
+        id: contar
+        run: |
+          abiertos=$(gh pr list --state open --limit 100 --json headRefName \
+            --jq "[.[] | select(.headRefName | startswith(\"$PREFIJO_RAMA\"))] | length")
+          if [ "$abiertos" -ge "$MAX_PRS_ABIERTOS" ]; then
+            echo "trabajar=false" >> "$GITHUB_OUTPUT"
+            echo "En pausa: $abiertos PRs de la mejora diaria abiertos (límite $MAX_PRS_ABIERTOS)." | tee -a "$GITHUB_STEP_SUMMARY"
+          else
+            echo "trabajar=true" >> "$GITHUB_OUTPUT"
+            echo "$abiertos PRs abiertos: hoy se trabaja." | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
+
   mejora:
+    needs: pendientes
+    if: needs.pendientes.outputs.trabajar == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    permissions:
+      contents: write
+      pull-requests: write
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
@@ -50,9 +102,11 @@ jobs:
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
         run: |
-          claude -p "$(cat .github/claude-daily/PROMPT.md)" \
+          claude -p "Hoy es $(date +%F).
+
+          $(cat .github/claude-daily/PROMPT.md)" \
             --permission-mode acceptEdits \
-            --allowedTools "Read,Edit,Write,Glob,Grep,Bash(python -m pytest:*),Bash(git diff:*),Bash(git log:*),Bash(git status:*),Bash(gh pr list:*),Bash(gh pr view:*)" \
+            --allowedTools "Read,Edit,Write,Glob,Grep,Bash(python -m pytest:*),Bash(git diff:*),Bash(git log:*),Bash(git status:*),Bash(gh pr list:*),Bash(gh pr view:*),Bash(gh pr diff:*)" \
             --max-turns 80 \
             --output-format text | tee "$RUNNER_TEMP/claude.log"
 
@@ -64,10 +118,21 @@ jobs:
           body="$RUNNER_TEMP/pr.md"
           if [ -f .daily-pr.md ]; then mv .daily-pr.md "$body"; else echo "Mejora diaria $(date +%F)" > "$body"; fi
           if git diff --quiet && [ -z "$(git ls-files --others --exclude-standard)" ]; then
-            echo "Sin cambios hoy."; exit 0
+            { echo "## Sin cambios hoy"; cat "$body"; } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
           fi
+
+          # bitácora: los días de meses anteriores se agrupan en log/AAAA-MM/
+          log=.github/claude-daily/log
+          mes=$(date +%Y-%m)
+          for f in "$log"/????-??-??.md; do
+            [ -e "$f" ] || continue
+            m=$(basename "$f" | cut -c1-7)
+            if [ "$m" != "$mes" ]; then mkdir -p "$log/$m"; git mv "$f" "$log/$m/"; fi
+          done
+
           title="$(head -n1 "$body")"
-          branch="claude/mejora-$(date +%F)-${GITHUB_RUN_ID}"
+          branch="${PREFIJO_RAMA}$(date +%F)-${GITHUB_RUN_ID}"
           git config user.name "claude-mejora-diaria[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -b "$branch"
