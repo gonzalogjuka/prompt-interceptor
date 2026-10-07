@@ -44,10 +44,11 @@ Double-click, in order:
 | File | What it does |
 |---|---|
 | `1-Iniciar-interceptor.cmd` | creates `.venv`, installs deps, creates `.env`, starts on `:8787` |
-| `2-Claude-con-interceptor.cmd` | resumes the last Claude Code conversation of this folder through the interceptor, in bypass (a new one if there is none). `claude-interceptor.ps1 -Nueva` / `-ConPermisos` to change that |
+| `2-Claude-con-interceptor.cmd` | resumes the last Claude Code conversation of this folder through the interceptor, in bypass (a new one if there is none). `claude-interceptor.ps1 -Nueva` / `-ConPermisos` to change that, `-Nombre x` to label the session |
 | `3-Ver-reporte.cmd` | metrics summary (needs `METRICS_ENABLED=true`) |
 | `4-Ver-log.cmd` | live log of the background instance |
 | `5-Benchmark.cmd` | A/B benchmark (needs `ANTHROPIC_API_KEY` in `.env`) |
+| `6-Ver-sesiones.cmd` | live list of the active Claude Code sessions on this PC (label, busy/idle, folder, since when) |
 | `test.ps1` | tests against a simulated API (no key, no network) |
 
 Run it in the background at every login instead of keeping a window open:

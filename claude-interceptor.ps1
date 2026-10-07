@@ -5,7 +5,10 @@
 # Uso:  .\claude-interceptor.ps1               retoma la ultima, en bypass
 #       .\claude-interceptor.ps1 -Nueva        conversacion nueva
 #       .\claude-interceptor.ps1 -ConPermisos  sin bypass (Claude pide permiso como siempre)
-param([int]$Port = 8787, [switch]$Nueva, [switch]$ConPermisos)
+#       .\claude-interceptor.ps1 -Nueva -Nombre trabajador-1
+#                                               etiqueta: se ve en 6-Ver-sesiones.cmd, en --resume y en el
+#                                               titulo de la ventana, y es el nombre para mandarle mensajes
+param([int]$Port = 8787, [switch]$Nueva, [switch]$ConPermisos, [string]$Nombre)
 
 try {
     Invoke-RestMethod "http://127.0.0.1:$Port/healthz" -TimeoutSec 3 | Out-Null
@@ -17,6 +20,7 @@ try {
 $env:ANTHROPIC_BASE_URL = "http://127.0.0.1:$Port"
 $flags = @()
 if (-not $ConPermisos) { $flags += "--dangerously-skip-permissions" }
+if ($Nombre) { $flags += @("--name", $Nombre) }
 Write-Host "Claude Code -> interceptor (http://127.0.0.1:$Port) -> Anthropic" -ForegroundColor Green
 
 # sin conversacion previa en la carpeta, --continue abre una nueva por su cuenta
