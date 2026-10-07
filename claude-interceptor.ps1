@@ -1,7 +1,7 @@
 # claude-interceptor.ps1 - abre Claude Code pasando por el interceptor.
 # Solo afecta a esta terminal: tu Claude Code normal sigue igual.
 # Por defecto retoma la ultima conversacion de esta carpeta, en bypass (lo que necesita el flujo
-# manager para mandarle instrucciones a otras sesiones). Si no hay conversacion previa, abre una nueva.
+# manager para mandarle instrucciones a otras sesiones). Si no hay conversacion previa, claude abre una nueva.
 # Uso:  .\claude-interceptor.ps1               retoma la ultima, en bypass
 #       .\claude-interceptor.ps1 -Nueva        conversacion nueva
 #       .\claude-interceptor.ps1 -ConPermisos  sin bypass (Claude pide permiso como siempre)
@@ -19,11 +19,6 @@ $flags = @()
 if (-not $ConPermisos) { $flags += "--dangerously-skip-permissions" }
 Write-Host "Claude Code -> interceptor (http://127.0.0.1:$Port) -> Anthropic" -ForegroundColor Green
 
-if (-not $Nueva) {
-    $started = Get-Date
-    claude --continue @flags
-    # sin conversacion previa en esta carpeta, --continue sale enseguida con error: abrir una nueva
-    if ($LASTEXITCODE -eq 0 -or ((Get-Date) - $started).TotalSeconds -gt 10) { exit $LASTEXITCODE }
-    Write-Host "No hay conversacion para retomar en esta carpeta: abro una nueva." -ForegroundColor Yellow
-}
+# sin conversacion previa en la carpeta, --continue abre una nueva por su cuenta
+if (-not $Nueva) { $flags = @("--continue") + $flags }
 claude @flags
