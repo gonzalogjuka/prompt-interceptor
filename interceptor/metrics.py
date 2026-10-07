@@ -1,6 +1,7 @@
 """Append-only JSONL metrics. One line per intercepted request."""
 from __future__ import annotations
 
+import codecs
 import json
 import time
 from pathlib import Path
@@ -28,6 +29,7 @@ class SSEUsageScanner:
     event stream as it passes through to the client."""
 
     def __init__(self, keep_text: bool = False) -> None:
+        self._decoder = codecs.getincrementaldecoder("utf-8")(errors="ignore")
         self._buf = ""
         self.usage: dict[str, int] = {}
         self.stop_reason: str | None = None
@@ -39,7 +41,9 @@ class SSEUsageScanner:
         return "".join(self._text)
 
     def feed(self, chunk: bytes) -> None:
-        self._buf += chunk.decode("utf-8", errors="ignore")
+        # a chunk boundary can land mid UTF-8 character (TCP doesn't respect them); an
+        # incremental decoder keeps the trailing partial bytes instead of dropping them
+        self._buf += self._decoder.decode(chunk)
         *lines, self._buf = self._buf.split("\n")
         for line in lines:
             if not line.startswith("data:"):
