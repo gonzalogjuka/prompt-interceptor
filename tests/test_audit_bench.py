@@ -25,6 +25,19 @@ def test_sse_scanner_reads_text_and_stop_reason_across_chunks():
     assert sc.text == "hola" and sc.stop_reason == "end_turn" and sc.usage["output_tokens"] == 3
 
 
+def test_sse_scanner_survives_a_multibyte_char_split_across_chunks():
+    # TCP doesn't respect UTF-8 boundaries: a real upstream can cut a chunk mid-character
+    text = "ñandú corrió, está camión"
+    payload = ("data: " + json.dumps({"type": "content_block_delta",
+                                      "delta": {"type": "text_delta", "text": text}}, ensure_ascii=False)
+               + "\n").encode("utf-8")
+    for cut in range(1, len(payload)):
+        sc = SSEUsageScanner(keep_text=True)
+        sc.feed(payload[:cut])
+        sc.feed(payload[cut:])
+        assert sc.text == text, f"corrupted at cut={cut}: {sc.text!r}"
+
+
 def _wait_for(pred, timeout=2.0):
     end = time.time() + timeout
     while time.time() < end:
