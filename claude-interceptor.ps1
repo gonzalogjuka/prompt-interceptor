@@ -17,6 +17,13 @@ try {
     exit 1
 }
 
+# abierto desde otra sesion de Claude (p. ej. una pestaña que lanza el manager), se heredan sus variables:
+# la nueva se creeria hija de esa, sin transcript ni registro propio (no recibe mensajes). Se limpian.
+foreach ($v in "CLAUDECODE", "CLAUDE_PID", "CLAUDE_JOB_DIR", "CLAUDE_CODE_CHILD_SESSION", "CLAUDE_CODE_ENTRYPOINT",
+               "CLAUDE_CODE_SESSION_ID", "CLAUDE_CODE_SESSION_ATTENDED", "CLAUDE_CODE_MESSAGING_SOCKET",
+               "CLAUDE_CODE_MESSAGING_TOKEN") {
+    Remove-Item "env:$v" -ErrorAction SilentlyContinue
+}
 $env:ANTHROPIC_BASE_URL = "http://127.0.0.1:$Port"
 $flags = @()
 if (-not $ConPermisos) { $flags += "--dangerously-skip-permissions" }
