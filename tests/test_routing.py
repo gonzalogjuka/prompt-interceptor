@@ -3,6 +3,7 @@ import pytest
 
 from helpers import HAIKU, IMPROVED, LONG_PROMPT, OPUS, SONNET, STRUCTURE, TIERS, TOOLS, Upstream, main_calls, \
     make, metrics, post, routes, structurer_calls, tool_loop
+from interceptor.routing import Router, Rule, find_override
 
 ALL_TO = lambda model: [{"name": "all", "when": {}, "model": model}]  # noqa: E731
 INTERPRETERS = {"interpreters": {"moderate": "haiku", "complex": "sonnet"}}
@@ -10,6 +11,64 @@ INTERPRETERS = {"interpreters": {"moderate": "haiku", "complex": "sonnet"}}
 
 def classified(complexity, deliverable="answer"):
     return {"complexity": complexity, "deliverable": deliverable, "reason": "test"}
+
+
+# ---- pure matching logic (interceptor/routing.py), no app involved ------------
+def test_rule_matches_context_kinds():
+    structure = {"context": [{"kind": "error", "summary": "x"}, {"kind": "log", "summary": "y"}]}
+    assert Rule("r", "haiku", when={"context_kinds": ["log", "config"]}).matches(structure, "texto", "opus")
+    assert not Rule("r", "haiku", when={"context_kinds": ["config"]}).matches(structure, "texto", "opus")
+    assert not Rule("r", "haiku", when={"context_kinds": ["config"]}).matches({}, "texto", "opus")
+
+
+def test_rule_matches_min_and_max_chars():
+    rule = Rule("r", "haiku", when={"min_chars": 10, "max_chars": 20})
+    assert rule.matches({}, "x" * 15, "opus")
+    assert rule.matches({}, "x" * 10, "opus") and rule.matches({}, "x" * 20, "opus")  # bordes inclusivos
+    assert not rule.matches({}, "x" * 9, "opus")
+    assert not rule.matches({}, "x" * 21, "opus")
+
+
+def test_rule_matches_from_models():
+    rule = Rule("r", "haiku", when={"from_models": ["opus", "sonnet"]})
+    assert rule.matches({}, "x", "claude-opus-5-5")
+    assert not rule.matches({}, "x", "claude-haiku-4-5-20251001")
+
+
+def test_rule_with_no_conditions_matches_anything():
+    assert Rule("r", "haiku").matches({}, "", "cualquier-modelo")
+
+
+@pytest.mark.parametrize("text, expected", [
+    ("explicame esto #model:sonnet", "sonnet"),
+    ("#model:opus al principio", "opus"),
+    ("texto #model:sonnet #model:opus", "sonnet"),  # gana el primero
+    ("sin override", None),
+    ("texto#model:sonnet", None),  # pegado a una palabra: no es un override
+    ("##model:sonnet", None),  # precedido por #: no es un override
+], ids=["mid-text", "start", "first-wins", "none", "glued-to-word", "double-hash"])
+def test_find_override(text, expected):
+    assert find_override(text) == expected
+
+
+def test_router_load_without_file_keeps_legacy_single_rule():
+    router = Router.load(None, HAIKU)
+    assert [r.when for r in router.rules] == [{"complexity": ["simple"]}]
+    assert router.resolve("haiku") == HAIKU
+
+
+def test_router_load_alias_keys_are_case_insensitive(tmp_path):
+    path = routes(tmp_path, [], aliases={"MiModelo": "custom-model-x"})
+    router = Router.load(path, HAIKU)
+    assert router.resolve("mimodelo") == router.resolve("MiModelo") == "custom-model-x"
+
+
+def test_router_load_drops_empty_interpreter_entries(tmp_path):
+    path = routes(tmp_path, [], interpreters={"moderate": "haiku", "complex": ""})
+    router = Router.load(path, HAIKU)
+    assert router.interpreters == {"moderate": "haiku"}
+    assert router.interpreter_for("complex") is None
+    assert router.interpreter_for("simple") is None
 
 
 # ---- who answers: rules ------------------------------------------------------
