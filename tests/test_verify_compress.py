@@ -37,6 +37,15 @@ def test_check_appends_missing_facts_or_rejects_a_lossy_rewrite():
     assert fixed is None and rep.rejected
 
 
+def test_check_does_not_count_a_fact_kept_inside_an_unrelated_longer_token():
+    original = "Exit Code: 137, limit 256Mi, pod worker-7f3a crashed"
+    # worker-7f3a NO esta en el rewrite: worker-7f3abc es un pod distinto, no alcanza con ser substring
+    improved = "Exit 137, limite 256Mi, pod worker-7f3abc crasheo"
+    fixed, rep = check(original, improved)
+    assert rep.added == ["worker-7f3a"] and not rep.rejected
+    assert "worker-7f3a" in fixed
+
+
 def test_rejected_rewrite_falls_back_to_append_mode(tmp_path):
     up = Upstream(structure={**STRUCTURE, "improved_prompt": "Tengo un problema con un pod."})
     client, mpath = make(tmp_path, up)

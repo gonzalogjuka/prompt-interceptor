@@ -45,6 +45,13 @@ def extract_facts(text: str) -> list[str]:
     return list(seen)
 
 
+def _kept(fact: str, improved: str) -> bool:
+    """Whether `fact` survives in `improved` as a whole token, not merely as a
+    substring of some other token (e.g. pod `worker-7f3a` must not count as kept
+    just because the rewrite mentions the unrelated `worker-7f3abc`)."""
+    return re.search(rf"(?<!\w){re.escape(fact)}(?!\w)", improved) is not None
+
+
 @dataclass
 class VerifyReport:
     total: int = 0
@@ -61,7 +68,7 @@ def check(original: str, improved: str) -> tuple[str | None, VerifyReport]:
     """Return (fixed_improved, report). fixed_improved is None when the rewrite
     should be rejected in favor of the original."""
     facts = extract_facts(original)
-    missing = [f for f in facts if f not in improved]
+    missing = [f for f in facts if not _kept(f, improved)]
     report = VerifyReport(total=len(facts), present=len(facts) - len(missing))
     if not missing:
         return improved, report
