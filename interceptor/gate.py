@@ -114,17 +114,6 @@ def previous_assistant_text(messages: list[dict[str, Any]], before: int) -> str:
     return ""
 
 
-def last_human(messages: list[dict[str, Any]]) -> str | None:
-    """Text of the most recent human-typed user message (skips tool results and
-    system entries). Used as the anchor of the current turn."""
-    for m in reversed(messages):
-        if m.get("role") == "user":
-            text, _ = inspect(m)
-            if text:
-                return text
-    return None
-
-
 def human_text(message: dict[str, Any]) -> str | None:
     return inspect(message)[0]
 
