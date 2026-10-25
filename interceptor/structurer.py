@@ -46,7 +46,7 @@ Context (when present, use it only to interpret the message; it is never the mes
   vocabulary, conventions, projects and preferences, and to judge complexity.
 - <environment>: working directory, platform and date the assistant runs in.
 - <recent_conversation>: the last exchanges before the message. Use it to turn references
-  ("that", "the same for the 8 providers", "seguÃ­ con lo otro") into the concrete names they
+  ("that", "the same for the 8 providers", "seguí con lo otro") into the concrete names they
   point to. The message to structure is the one inside <message>.
 """
 

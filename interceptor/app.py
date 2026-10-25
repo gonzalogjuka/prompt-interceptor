@@ -118,7 +118,7 @@ def create_app(cfg: Config | None = None, transport: httpx.AsyncBaseTransport | 
     # 0 = the interpreter takes as long as it needs; only connecting is bounded
     interpreter_timeout = cfg.structurer_timeout or httpx.Timeout(None, connect=10.0)
     log.info("modo=%s | verify=%s | compress=%s | audit=%s | routing=%s (%d reglas, %s) | "
-             "clasificar cortos=%s | solo requests con tools=%s | contexto=%s | perfil=%s | intÃ©rpretes=%s",
+             "clasificar cortos=%s | solo requests con tools=%s | contexto=%s | perfil=%s | intérpretes=%s",
              cfg.inject_mode, cfg.verify, cfg.compress, cfg.audit, cfg.routing_mode, len(router.rules),
              router.source, cfg.classify_short, cfg.require_tools, cfg.context,
              f"{len(profile)} chars" if profile else "no",
@@ -158,7 +158,7 @@ def create_app(cfg: Config | None = None, transport: httpx.AsyncBaseTransport | 
             # switching models drops the prompt cache of the whole conversation
             record.update(route_skipped="history_too_large", route_rule=why)
             log.info("[route] %s | regla=%s | se mantiene %s: historial de %d chars, cambiar de modelo "
-                     "perderÃ­a la cache", how, why, _short(current), history)
+                     "perdería la cache", how, why, _short(current), history)
             return
         if how == "shadow":
             if anchor_key:
@@ -213,22 +213,22 @@ def create_app(cfg: Config | None = None, transport: httpx.AsyncBaseTransport | 
 
     def inherit(body: dict[str, Any], record: dict[str, Any], anchor_key: str | None,
                 prev_key: str | None) -> None:
-        """A pure continuation ("dale", "seguÃ­") keeps the model of the previous turn."""
+        """A pure continuation ("dale", "seguí") keeps the model of the previous turn."""
         current = body.get("model")
         store = shadow_sticky if cfg.routing_mode == "shadow" else sticky
         model = store.get(prev_key) if prev_key else None
         if not model or model == current:
-            log.info("[route] continuaciÃ³n | sigue en %s", _short(current))
+            log.info("[route] continuación | sigue en %s", _short(current))
             return
         if anchor_key:
             store.put(anchor_key, model)
         if cfg.routing_mode == "shadow":
-            record.update(route_shadow=model, route_rule="continuaciÃ³n")
-            log.info("[route] shadow | continuaciÃ³n | heredarÃ­a %s del turno anterior (no aplicado)", _short(model))
+            record.update(route_shadow=model, route_rule="continuación")
+            log.info("[route] shadow | continuación | heredaría %s del turno anterior (no aplicado)", _short(model))
             return
-        record.update(routed_from=current, route_how="inherit", route_rule="continuaciÃ³n")
+        record.update(routed_from=current, route_how="inherit", route_rule="continuación")
         body["model"] = model
-        log.info("[route] continuaciÃ³n | hereda %s del turno anterior", _short(model))
+        log.info("[route] continuación | hereda %s del turno anterior", _short(model))
 
     # ---- pipeline -------------------------------------------------------------
     async def process(body: dict[str, Any], request: Request, record: dict[str, Any]) -> dict[str, Any]:
@@ -273,7 +273,7 @@ def create_app(cfg: Config | None = None, transport: httpx.AsyncBaseTransport | 
                               context_environment=bool(ctx.environment),
                               structurer_cache_read_tokens=res.cache_read_tokens,
                               structurer_cache_write_tokens=res.cache_write_tokens)
-                log.info("[context] %s | cache leÃ­da %d / escrita %d tokens | entrada %d tokens", ctx.summary(),
+                log.info("[context] %s | cache leída %d / escrita %d tokens | entrada %d tokens", ctx.summary(),
                          res.cache_read_tokens, res.cache_write_tokens, res.input_tokens)
 
             override = find_override(text)
@@ -315,7 +315,7 @@ def create_app(cfg: Config | None = None, transport: httpx.AsyncBaseTransport | 
                     source = (f"[interceptor: {collapsed} repeated log lines collapsed; each kept line shows "
                               f"its count and time span]\n{compressed}")
                     record.update(compressed_from=len(text), compressed_to=len(source), collapsed_lines=collapsed)
-                    log.info("[compress] %d -> %d chars | %d lÃ­neas de log repetidas colapsadas",
+                    log.info("[compress] %d -> %d chars | %d líneas de log repetidas colapsadas",
                              len(text), len(source), collapsed)
 
             def pick_route(structure: dict[str, Any]) -> None:
@@ -388,7 +388,7 @@ def create_app(cfg: Config | None = None, transport: httpx.AsyncBaseTransport | 
                               verify_added=len(rep.added), verify_rejected=rep.rejected)
                 if fixed is None:
                     texts, mode = (source, render_block(result.structure)), "append"
-                    log.info("[verify] la reescritura perdiÃ³ %d de %d datos exactos -> se usa tu original + estructura",
+                    log.info("[verify] la reescritura perdió %d de %d datos exactos -> se usa tu original + estructura",
                              rep.total - rep.present, rep.total)
                 else:
                     texts = (fixed, texts[1])
@@ -486,7 +486,7 @@ def create_app(cfg: Config | None = None, transport: httpx.AsyncBaseTransport | 
             detail = (await upstream.aread())[:300].decode("utf-8", "ignore")
             await upstream.aclose()
             fallback = record.get("routed_from") or body.get("model")
-            log.warning("[route] %s rechazÃ³ el request (%d): %s | vuelvo a %s con el effort del cliente",
+            log.warning("[route] %s rechazó el request (%d): %s | vuelvo a %s con el effort del cliente",
                         _short(body.get("model")), upstream.status_code, detail, _short(fallback))
             body["model"] = fallback
             if client_output_config is None:
